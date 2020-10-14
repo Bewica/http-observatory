@@ -56,8 +56,9 @@ def __create_session(url: str, **kwargs) -> dict:
         'User-Agent': RETRIEVER_USER_AGENT,
     })
 
+    timeout = kwargs.get("TIMEOUT", TIMEOUT)
     try:
-        r = s.get(url, timeout=TIMEOUT)
+        r = s.get(url, timeout=timeout)
 
         # No tls errors
         r.verified = True
@@ -67,15 +68,25 @@ def __create_session(url: str, **kwargs) -> dict:
     # We can try again if there's an SSL error, making sure to note it in the session
     except requests.exceptions.SSLError:
         try:
-            r = s.get(url, timeout=TIMEOUT, verify=False)
+            r = s.get(url, timeout=timeout, verify=False)
             r.verified = False
         except (KeyboardInterrupt, SystemExit):
             raise
+        except (requests.ConnectTimeout, requests.ReadTimeout):
+            if kwargs.get("RAISE_ON_TIMEOUT"):
+                raise
+            r = None
+            s = None
         except:
             r = None
             s = None
     except (KeyboardInterrupt, SystemExit):
         raise
+    except (requests.ConnectTimeout, requests.ReadTimeout):
+        if kwargs.get("RAISE_ON_TIMEOUT"):
+            raise
+        r = None
+        s = None
     except:
         r = None
         s = None
@@ -87,13 +98,14 @@ def __create_session(url: str, **kwargs) -> dict:
     return {'session': s, 'response': r}
 
 
-def __get(session, relative_path='/', headers=None, cookies=None):
+def __get(session, relative_path='/', headers=None, cookies=None, **kwargs):
     if not headers:
         headers = {}
 
     if not cookies:
         cookies = {}
 
+    timeout = kwargs.get("TIMEOUT", TIMEOUT)
     try:
         # TODO: limit the maximum size of the response, to keep malicious site operators from killing us
         # TODO: Perhaps we can naively do it for now by simply setting a timeout?
@@ -101,12 +113,16 @@ def __get(session, relative_path='/', headers=None, cookies=None):
         return session.get(session.url.scheme + '://' + session.url.netloc + relative_path,
                            headers=headers,
                            cookies=cookies,
-                           timeout=TIMEOUT)
+                           timeout=timeout)
     # Let celery exceptions percolate upward
     except (SoftTimeLimitExceeded, TimeLimitExceeded):
         raise
     except (KeyboardInterrupt, SystemExit):
         raise
+    except (requests.ConnectTimeout, requests.ReadTimeout):
+        if kwargs.get("RAISE_ON_TIMEOUT"):
+            raise
+        return None
     except:
         return None
 
@@ -182,11 +198,12 @@ def retrieve_all(hostname, **kwargs):
         # Do a CORS preflight request
         retrievals['responses']['cors'] = __get(retrievals['session'],
                                                 kwargs['path'],
-                                                headers={'Origin': RETRIEVER_CORS_ORIGIN})
+                                                headers={'Origin': RETRIEVER_CORS_ORIGIN},
+                                                **kwargs)
 
         # Store all the files we retrieve
         for resource in resources:
-            resp = __get(retrievals['session'], resource)
+            resp = __get(retrievals['session'], resource, **kwargs)
             retrievals['resources'][resource] = __get_page_text(resp)
 
     # Parse out the HTTP meta-equiv headers
