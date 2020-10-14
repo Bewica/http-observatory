@@ -56,7 +56,7 @@ def __create_session(url: str, **kwargs) -> dict:
         'User-Agent': RETRIEVER_USER_AGENT,
     })
 
-    timeout = kwargs.get("TIMEOUT", TIMEOUT)
+    timeout = kwargs.get("timeout", TIMEOUT)
     try:
         r = s.get(url, timeout=timeout)
 
@@ -72,8 +72,8 @@ def __create_session(url: str, **kwargs) -> dict:
             r.verified = False
         except (KeyboardInterrupt, SystemExit):
             raise
-        except (requests.ConnectTimeout, requests.ReadTimeout):
-            if kwargs.get("RAISE_ON_TIMEOUT"):
+        except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout, requests.exceptions.Timeout):
+            if kwargs.get("raise_on_timeout"):
                 raise
             r = None
             s = None
@@ -82,8 +82,8 @@ def __create_session(url: str, **kwargs) -> dict:
             s = None
     except (KeyboardInterrupt, SystemExit):
         raise
-    except (requests.ConnectTimeout, requests.ReadTimeout):
-        if kwargs.get("RAISE_ON_TIMEOUT"):
+    except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout, requests.exceptions.Timeout):
+        if kwargs.get("raise_on_timeout"):
             raise
         r = None
         s = None
@@ -105,7 +105,7 @@ def __get(session, relative_path='/', headers=None, cookies=None, **kwargs):
     if not cookies:
         cookies = {}
 
-    timeout = kwargs.get("TIMEOUT", TIMEOUT)
+    timeout = kwargs.get("timeout", TIMEOUT)
     try:
         # TODO: limit the maximum size of the response, to keep malicious site operators from killing us
         # TODO: Perhaps we can naively do it for now by simply setting a timeout?
@@ -119,8 +119,8 @@ def __get(session, relative_path='/', headers=None, cookies=None, **kwargs):
         raise
     except (KeyboardInterrupt, SystemExit):
         raise
-    except (requests.ConnectTimeout, requests.ReadTimeout):
-        if kwargs.get("RAISE_ON_TIMEOUT"):
+    except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout, requests.exceptions.Timeout):
+        if kwargs.get("raise_on_timeout"):
             raise
         return None
     except:
