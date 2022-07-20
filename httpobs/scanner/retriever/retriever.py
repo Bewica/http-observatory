@@ -199,7 +199,7 @@ def retrieve_all(hostname, **kwargs):
         retrievals['responses']['cors'] = __get(retrievals['session'],
                                                 kwargs['path'],
                                                 headers={'Origin': RETRIEVER_CORS_ORIGIN},
-                                                **{k:v for k,v in kwargs.items() if k != 'headers'})
+                                                **{k: v for k, v in kwargs.items() if k != 'headers'})
 
         # Store all the files we retrieve
         for resource in resources:
